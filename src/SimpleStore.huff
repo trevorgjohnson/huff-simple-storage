@@ -1,6 +1,8 @@
 /* Interface */
 #define function setValue(uint256) nonpayable returns ()
 #define function getValue() view returns (uint256)
+#define function helloWorld() view returns (string)
+#define function longString() view returns (string)
 
 /* Storage Slots */
 #define constant VALUE_LOCATION = FREE_STORAGE_POINTER()
@@ -24,11 +26,67 @@
     0x20 0x00 return
 }
 
+#define macro HELLO_WORLD() = takes (0) returns (0) {
+    // store dynamic offset of 0x20 at 0x00
+    0x20    // [0x20]
+    0x00    // [0x00, 0x20]
+    mstore  // []
+
+    // store bytes for 'Hello, World!' at 0x40
+    __RIGHTPAD(0x0d48656c6c6f2c20576f726c6421)  // [length + "Hello, World!"]
+
+    // By including the length in the original string,
+    // we need to mstore 1 byte less than 20 bytes to align the slots correctly 
+
+    0x3F                                        // [length + "Hello, World!", 0x3F]
+    mstore                                      // []
+
+    // return full 96 bytes
+    0x60 // [0x60] 
+    0x00 // [0x00, 0x60] 
+    return
+}
+
+#define macro LONG_STRING() = takes (0) returns (0) {
+    // store dynamic offset of 0x20 at 0x00
+    0x20    // [0x20]
+    0x00    // [0x00, 0x20]
+    mstore  // []
+
+    0x66    // [0x66]
+    0x20    // 0x20
+    mstore  // []
+
+    0x4c6f72656d20697073756d20646f6c6f722073697420616d65742c2071756920  // [First 32 bytes]
+    0x40
+    mstore
+
+    0x6d696e696d206c61626f7265206164697069736963696e67206d696e696d2073  // [Second 32 bytes]
+    0x60
+    mstore
+
+    0x696e742063696c6c756d2073696e7420636f6e73656374657475722063757069  // [Third 32 bytes]
+    0x80
+    mstore
+
+    __RIGHTPAD(0x64617461742e)  // [Last 6 bytes]
+    0xA0
+    mstore
+
+    // return full 166 bytes
+    0xA6 // [0xA6] 
+    0x00 // [0x00, 0xA6] 
+    return
+}
+
 #define macro MAIN() = takes (0) returns (0) {
     // Identify which function is being called.
     0x00 calldataload 0xE0 shr
+
     dup1 __FUNC_SIG(setValue) eq set jumpi
     dup1 __FUNC_SIG(getValue) eq get jumpi
+    dup1 __FUNC_SIG(helloWorld) eq helloWorld jumpi
+    dup1 __FUNC_SIG(longString) eq longString jumpi
 
     0x00 0x00 revert
 
@@ -36,5 +94,8 @@
         SET_VALUE()
     get:
         GET_VALUE()
-
+    helloWorld:
+        HELLO_WORLD()
+    longString:
+        LONG_STRING()
 }

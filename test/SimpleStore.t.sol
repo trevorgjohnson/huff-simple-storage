@@ -21,9 +21,31 @@ contract SimpleStoreTest is Test {
         console.log(simpleStore.getValue());
         assertEq(value, simpleStore.getValue());
     }
+
+    /// @dev Call 'helloWorld()' and ensure it returns "Hello, World!"
+    function testHelloWorld() public {
+        string memory helloWorld = simpleStore.helloWorld();
+        console.log(helloWorld);
+        assertEq(helloWorld, "Hello, World!");
+    }
+
+    /// @dev Call 'longString()' and ensure it returns the correct long string
+    function testLongString() public {
+        string memory longString = simpleStore.longString();
+        console.log(longString);
+        assertEq(
+            longString,
+            "Lorem ipsum dolor sit amet, qui minim labore adipisicing minim sint cillum sint consectetur cupidatat."
+        );
+    }
 }
 
 interface SimpleStore {
     function setValue(uint256) external;
+
     function getValue() external returns (uint256);
+
+    function helloWorld() external returns (string memory);
+
+    function longString() external returns (string memory);
 }
