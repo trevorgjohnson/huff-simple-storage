@@ -1,0 +1,54 @@
+/// @dev Ethereum Signed Message header. Used in `TO_ETH_SIGNED_MSG_HASH`
+#define constant SIG_PREFIX = 0x0000000019457468657265756d205369676e6564204d6573736167653a0a3332
+
+/// @dev The number which `s` must not exceed in order for the signature to be non-malleable.
+#define constant MALLEABILITY_THRESHOLD = 0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0
+
+/// @dev Recovers the signer's address using 'hash' and 'v', 'r', and 's'
+/// @param hash digest used to sign message
+/// @param v recovery byte needed for recovering the signature. Should be either 27 or 28
+/// @param r 'r' parameter in the signature
+/// @param s 's' parameter in the signature
+/// @return recovered signer address. If there's a failure to recover, the zero address is returned instead 
+#define macro ECRECOVER() = takes(4) returns(1) {
+    // Input Stack                  // [hash, v, r, s]
+
+    // If 's' is above threshold, return zero address
+    [MALLEABILITY_THRESHOLD]        // [threshold, hash, v, r, s]
+    dup5 gt                         // [s > threshold, hash, v, r, s]
+    bad_malleability jumpi          // [hash, v, r, s]
+
+    0x00 mstore                     // [v, r, s]
+    0x20 mstore                     // [r, s]
+    0x40 mstore                     // [s]
+    0x60 mstore                     // []
+
+    0x20 0x40 0x80 0x00 0x01 gas    // [gas, 0x01, 0x00, 0x80, 0x40, 0x20]
+    staticcall iszero zero jumpi    // [success]
+
+    0x40 mload                      // [result]
+    returndatasize iszero           // [returnsize == 0, result]
+    zero jumpi success jump         // [result]
+
+    bad_malleability:
+        pop pop pop pop 0x00        // [0x00]
+    zero:
+        0x00                        // [0x00]
+    success:
+}
+
+/// @dev Returns an Ethereum Signed Message, created from a `hash`.
+/// This produces a hash corresponding to the one signed with the
+/// [`eth_sign`](https://eth.wiki/json-rpc/API#eth_sign)
+/// JSON-RPC method as part of EIP-191.
+#define macro TO_ETH_SIGNED_MSG_HASH() = takes (1) returns (1) {
+    // Input stack:             [hash]
+
+    // Store in scratch space for hashing.
+    0x20 mstore                 // []
+    [SIG_PREFIX] 0x00 mstore    // []
+
+    0x3c 0x04 sha3              // [result]
+
+    // Return stack:               [result]
+}
