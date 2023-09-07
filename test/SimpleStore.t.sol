@@ -47,17 +47,17 @@ contract SimpleStoreTest is Test {
         address(simpleStore).call(abi.encodeWithSelector(sel));
     }
 
-    event RecievedPayment(address indexed sender, uint256 value);
+    event ReceivedPayment(address indexed sender, uint256 value);
 
-    /// @dev Send ETH to contract without matching selector and check for 'RecievedPayment' event
-    function testRecieve(address caller, uint256 value) public {
+    /// @dev Send ETH to contract without matching selector and check for 'ReceivedPayment' event
+    function testReceive(address caller, uint256 value) public {
         vm.assume(value > 0);
 
         vm.startPrank(caller);
         vm.deal(caller, value);
 
         vm.expectEmit(true, true, false, true);
-        emit RecievedPayment(caller, value);
+        emit ReceivedPayment(caller, value);
         simpleStore.nonExistant{value: value}();
 
         vm.stopPrank();
@@ -109,7 +109,7 @@ contract SimpleStoreTest is Test {
 interface SimpleStore {
     error NotFound(bytes4);
 
-    event RecievedPayment(address indexed, uint256);
+    event ReceivedPayment(address indexed, uint256);
 
     function nonExistant() external payable;
 

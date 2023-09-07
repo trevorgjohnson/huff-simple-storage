@@ -8,20 +8,77 @@
 #define function recover(bytes32,uint8,bytes32,bytes32) view returns (address)
 #define function prefixMessage(bytes32) view returns (bytes32)
 
-#define event RecievedPayment(address indexed, uint256)
+#define event ReceivedPayment(address indexed, uint256)
 
 #define error NotFound(bytes4)
 
 /* Storage Slots */
 #define constant VALUE_LOCATION = FREE_STORAGE_POINTER()
 
+/* Main entry point */
+#define macro MAIN() = takes (0) returns (0) {
+    // Identify which function is being called.
+    0x00 calldataload 0xE0 shr
+
+    dup1 __FUNC_SIG(setValue) eq set jumpi
+    dup1 __FUNC_SIG(getValue) eq get jumpi
+    dup1 __FUNC_SIG(helloWorld) eq helloWorld jumpi
+    dup1 __FUNC_SIG(longString) eq longString jumpi
+    dup1 __FUNC_SIG(recover) eq recover jumpi
+    dup1 __FUNC_SIG(prefixMessage) eq prefixMessage jumpi
+
+    callvalue receive jumpi     // [msg.sig]
+
+    __ERROR(NotFound)           // [NotFound_selector, msg.sig]
+    0x00 mstore                 // [msg.sig]
+    0xE0 shl 0x04 mstore        // []
+    0x24 0x00                   // [0x00, 0x24]
+    revert
+
+    set:
+        SET_VALUE()
+    get:
+        GET_VALUE()
+    helloWorld:
+        HELLO_WORLD()
+    longString:
+        LONG_STRING()
+    recover:
+        RECOVER()
+    prefixMessage:
+        PREFIX_MESSAGE()
+
+
+    receive:
+        RECEIVE()
+}
+
 /* Methods */
+/// ## Set Value Call
+/// 
+/// ### Calldata Layout
+/// 
+/// `selector . value`
+/// 
+/// | name     | size (bytes) |
+/// | -------- | ------------ |
+/// | selector | 4            |
+/// | value    | 32           |
 #define macro SET_VALUE() = takes (0) returns (0) {
     0x04 calldataload   // [value]
     [VALUE_LOCATION]    // [ptr, value]
     sstore              // []
 }
 
+/// ## Get Value Call
+/// 
+/// ### Calldata Layout
+/// 
+/// `selector`
+/// 
+/// | name     | size (bytes) |
+/// | -------- | ------------ |
+/// | selector | 4            |
 #define macro GET_VALUE() = takes (0) returns (0) {
     // Load value from storage.
     [VALUE_LOCATION]   // [ptr]
@@ -34,6 +91,15 @@
     0x20 0x00 return
 }
 
+/// ## Hello World Call
+/// 
+/// ### Calldata Layout
+/// 
+/// `selector`
+/// 
+/// | name     | size (bytes) |
+/// | -------- | ------------ |
+/// | selector | 4            |
 #define macro HELLO_WORLD() = takes (0) returns (0) {
     // store dynamic offset of 0x20 at 0x00
     0x20    // [0x20]
@@ -55,6 +121,15 @@
     return
 }
 
+/// ## Long String Call
+/// 
+/// ### Calldata Layout
+/// 
+/// `selector`
+/// 
+/// | name     | size (bytes) |
+/// | -------- | ------------ |
+/// | selector | 4            |
 #define macro LONG_STRING() = takes (0) returns (0) {
     // store dynamic offset of 0x20 at 0x00
     0x20    // [0x20]
@@ -87,6 +162,19 @@
     return
 }
 
+/// ## Recover Call
+/// 
+/// ### Calldata Layout
+/// 
+/// `selector`
+/// 
+/// | name     | size (bytes) |
+/// | -------- | ------------ |
+/// | selector | 4            |
+/// | hash     | 32           |
+/// | v        | 32           |
+/// | r        | 32           |
+/// | s        | 32           |
 #define macro RECOVER() = takes(0) returns (0) {
     0x64 calldataload               // [s]
     0x44 calldataload               // [r, s]
@@ -98,6 +186,16 @@
     0x20 0x00 return
 }
 
+/// ## Prefix Message Call
+/// 
+/// ### Calldata Layout
+/// 
+/// `selector`
+/// 
+/// | name     | size (bytes) |
+/// | -------- | ------------ |
+/// | selector | 4            |
+/// | hash     | 32           |
 #define macro PREFIX_MESSAGE() = takes(0) returns(0) {
     0x04 calldataload               // [hash]
     TO_ETH_SIGNED_MSG_HASH()        // [prefixedHash]
@@ -105,50 +203,24 @@
     0x20 0x00 return
 }
 
-#define macro RECIEVE() = takes (0) returns (0) {
+/// ## Receive Call
+/// 
+/// ### Calldata Layout
+/// 
+/// `selector`
+/// 
+/// | name     | size (bytes) |
+/// | -------- | ------------ |
+/// | selector | 4            |
+/// | hash     | 32           |
+#define macro RECEIVE() = takes (0) returns (0) {
     callvalue                       // [msg.value]
     0x00 mstore                     // []
     caller                          // [msg.sender]
-    __EVENT_HASH(RecievedPayment)   // [event_sig, msg.sender]
+    __EVENT_HASH(ReceivedPayment)   // [event_sig, msg.sender]
     0x20 0x00                       // [0x00, 0x20, event_sig, msg.sender]
     log2                            // []
 
     0x00 0x00 return
 }
 
-#define macro MAIN() = takes (0) returns (0) {
-    // Identify which function is being called.
-    0x00 calldataload 0xE0 shr
-
-    dup1 __FUNC_SIG(setValue) eq set jumpi
-    dup1 __FUNC_SIG(getValue) eq get jumpi
-    dup1 __FUNC_SIG(helloWorld) eq helloWorld jumpi
-    dup1 __FUNC_SIG(longString) eq longString jumpi
-    dup1 __FUNC_SIG(recover) eq recover jumpi
-    dup1 __FUNC_SIG(prefixMessage) eq prefixMessage jumpi
-
-    callvalue recieve jumpi     // [msg.sig]
-
-    __ERROR(NotFound)           // [NotFound_selector, msg.sig]
-    0x00 mstore                 // [msg.sig]
-    0xE0 shl 0x04 mstore        // []
-    0x24 0x00                   // [0x00, 0x24]
-    revert
-
-    set:
-        SET_VALUE()
-    get:
-        GET_VALUE()
-    helloWorld:
-        HELLO_WORLD()
-    longString:
-        LONG_STRING()
-    recover:
-        RECOVER()
-    prefixMessage:
-        PREFIX_MESSAGE()
-
-
-    recieve:
-        RECIEVE()
-}
